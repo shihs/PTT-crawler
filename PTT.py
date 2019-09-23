@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import json
 
 
-def get_board(board, pages):
+def get_board(board):
 	'''爬取ptt各版文章資訊
 	Args:
 		borad:看板英文名稱
@@ -189,7 +189,7 @@ def get_post_content(s, post_url):
 def run(board, pages):
 
 	# 網站session
-	s, res = get_board(board, pages)
+	s, res = get_board(board)
 
 	
 	# page_url = "https://www.ptt.cc/bbs/Gossiping/index1.html"
@@ -223,7 +223,8 @@ def run(board, pages):
 		# print (post_content)
 
 		# 整理成 dictionary 格式
-		all_info[i+1] = {
+		all_info[post_url] = {
+			"id":i+1,
 			"title":title,
 			"author":author,
 			"ip":ip,
@@ -233,13 +234,13 @@ def run(board, pages):
 				"push_number":push,
 				"push":push_info
 			},
-			"post_url":post_url,
+			# "post_url":post_url,
 			"page_url":page_url
 
 		}
 
-	with open("test.json", "w") as f:
-		json.dump(all_info, f)
+	# with open("test.json", "w") as f:
+	# 	json.dump(all_info, f)
 
 
 	print ("done!")
@@ -252,6 +253,7 @@ def run(board, pages):
 
 
 all_info = run("Gossiping", 1)
+print (all_info)
 
 # for i in all_info:
 # 	print (all_info[i])
