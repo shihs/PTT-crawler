@@ -4,11 +4,10 @@ from bs4 import BeautifulSoup
 import json
 
 
-def get_board(board):
-	'''爬取ptt各版文章資訊
+def get_requests(board):
+	'''送出requests Sesstion 通過十八歲確認
 	Args:
 		borad:看板英文名稱
-		pages:要爬取的頁數，包含最新頁總共的頁數
 	Return:
 		s:requests Session
 		res:get 結果
@@ -30,6 +29,7 @@ def get_board(board):
 		s.post(over18_url, data = payload, verify = False)
 		res = s.get(url, verify = False)
 
+	# 回傳 requests Session 和 s.get 結果
 	return (s, res)
 
 
@@ -42,6 +42,9 @@ def get_posts_info(s, page_url):
 		posts_info:List，文章標題、推文數、po文id、文章網址
 	'''
 	res = s.get(page_url)
+	if  res.status_code == 500:
+		print ("oops! 500")
+		return("stop!")
 	soup = BeautifulSoup(res.text, "lxml")
 	
 	# return list
@@ -76,7 +79,8 @@ def get_posts_info(s, page_url):
 
 
 
-def get_page(s, res, board, pages):
+# def get_page(s, res, board, pages):
+def get_page(s, res, board, index):
 	'''獲取每頁的url並抓每頁文章標題、推文數、po文id、文章網址
 	Args:
 		s:get_pages function的Session
@@ -94,16 +98,24 @@ def get_page(s, res, board, pages):
 	posts_info_all = []
 
 	# 爬取看板每頁文章簡單資訊
-	for page in range(pages):
+	# for page in range(pages):
+	while True:
 		# 該頁網址
-		page_url = "https://www.ptt.cc/bbs/" + board + "/index" + str(previous - page + 1) + ".html"
+		# page_url = "https://www.ptt.cc/bbs/" + board + "/index" + str(previous - page + 1) + ".html"
+		page_url = "https://www.ptt.cc/bbs/" + board + "/index" + str(index) + ".html"
 		print (page_url)
 		# 獲取該頁各文章 推文數、標題、作者、網址
 		posts_info = get_posts_info(s, page_url)
+
+		if posts_info == "stop!":
+			print ("im stoping here")
+			return(posts_info_all)
+
 		# 將每篇文章簡單資訊儲存到 posts_info_all
 		posts_info_all.extend(posts_info)
+		index = index + 1
 
-	return (posts_info_all)
+	# return (posts_info_all)
 
 
 def get_post_content(s, post_url):
@@ -135,11 +147,8 @@ def get_post_content(s, post_url):
 				end = str_main_content.find('\n', start)
 				ip = str_main_content[start:end]
 			break
-	# print (ip)
 
 	# 發文內容
-	# str_main_content = str(main_content)
-	# print (str_main_content)
 	start = str_main_content.find(str(article_time)) + len(article_time) + 13
 	end = str_main_content.find('--', start)
 	# end = str_main_content.rfind('--') # 找到最後的 "--"，文章內文結束處
@@ -186,23 +195,20 @@ def get_post_content(s, post_url):
 	return(article_time, ip, content, push_info)
 
 
-def run(board, pages):
+# def run(board, pages):
+def run(board, index):
+	# 獲取各版po文詳細資訊（包含po文者id、po文內容與時間等等）
+	'''Args:
+		board:看板名稱
+		pages:要爬取的頁數
+	'''
 
 	# 網站session
-	s, res = get_board(board)
+	s, res = get_requests(board)
 
-	
-	# page_url = "https://www.ptt.cc/bbs/Gossiping/index1.html"
-	# test = get_posts_info(s, page_url)
-	# print (test)
-	# post_url = test[0][3]
-	# post_url = "https://www.ptt.cc/bbs/Gossiping/M.1569198763.A.4BE.html"
-	# print (get_post_content(s, post_url))
-
-
-	
 	# 文章簡單資訊
-	posts_info_all = get_page(s, res, board, pages)
+	# posts_info_all = get_page(s, res, board, pages)
+	posts_info_all = get_page(s, res, board, index)
 	n = len(posts_info_all)
 
 	all_info = {}
@@ -215,12 +221,8 @@ def run(board, pages):
 		post_url = post[3]
 		page_url = post[4]
 
-		# page_url.find("index"):
-		# post_id = 
-
 		# 文章詳細資訊
 		article_time, ip, content, push_info = get_post_content(s, post_url)
-		# print (post_content)
 
 		# 整理成 dictionary 格式
 		all_info[post_url] = {
@@ -239,12 +241,17 @@ def run(board, pages):
 
 		}
 
-	# with open("test.json", "w") as f:
-	# 	json.dump(all_info, f)
+		if (i+1)%1000 == 0:
+			with open(board +  + ".json", "w") as f:
+				json.dump(all_info, f)
+			all_info = {}
 
+	if all_info != {}:
+		with open("test.json", "w") as f:
+			json.dump(all_info, f)
 
 	print ("done!")
-	return (all_info)
+	# return (all_info)
 
 
 
@@ -252,19 +259,8 @@ def run(board, pages):
 
 
 
-all_info = run("Gossiping", 1)
-print (all_info)
-
-# for i in all_info:
-# 	print (all_info[i])
-
-
-
-
-# get_board("movie", 1)
-# posts = get_board("Gossiping", 1)
-
-# print (posts)
+all_info = run("Gossiping", 39440)
+# print (all_info)
 
 
 
